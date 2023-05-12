@@ -41,6 +41,7 @@
 ################	data segment
 .data
 #	words
+.align 2
 words: .word word1, word2, word3, word4,word5  # an array of words
 word1: .asciiz "apple"
 word2: .asciiz "banana"
@@ -69,12 +70,17 @@ youWon: .asciiz "\n\nYou won! The hangman is spared.\nThe word was: "
 	add $t6, $t6, $zero	#tracks num of chars found
 	
 	#choose a random word from the array
-	li $t0, 5     #num of words in array
-	li $v0, 42    #instruction for random seed
+	li $t0, 5      #num of words in array
+	li $v0, 42     #instruction for random seed
 	li $a1, 5
 	syscall
-	mul $v0, $v0, $t0   #get a random number between 0 and (t0-1)
-	lw $a1, words($v0)  # load the address of the chosen word
+	
+	mul $t1, $v0, 4
+	
+	la $s7, words
+	add $s7, $s7, $t1
+	lw $t0, ($s7)  # load the chosen word from memory
+
 main:
 	printStr(enterLetter)
 	readChar
