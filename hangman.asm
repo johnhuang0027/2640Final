@@ -41,7 +41,12 @@
 ################	data segment
 .data
 #	words
-word1: .asciiz "bomb"
+words: .word word1, word2, word3, word4,word5  # an array of words
+word1: .asciiz "apple"
+word2: .asciiz "banana"
+word3: .asciiz "cherry"
+word4: .asciiz "durian"
+word5: .asciiz "bomb"
 
 #	prompts
 welcome: .asciiz "\nWelcome to The Hangman\n\nCan you guess the word?"
@@ -62,11 +67,19 @@ youWon: .asciiz "\n\nYou won! The hangman is spared.\nThe word was: "
 	printStr(welcome)
 	li  $t7, 7	#tracks number of attempts
 	add $t6, $t6, $zero	#tracks num of chars found
+	
+	#choose a random word from the array
+	li $t0, 5     #num of words in array
+	li $v0, 42    #instruction for random seed
+	li $a1, 5
+	syscall
+	mul $v0, $v0, $t0   #get a random number between 0 and (t0-1)
+	lw $a1, words($v0)  # load the address of the chosen word
 main:
 	printStr(enterLetter)
 	readChar
 	move $s0, $v0	#stores char in $s0
-	la   $a1, word1	#load address of word1
+	la   $a1, ($t0)	#load address of word
 	li   $s1, 0	#set counter
 	
 #	loop to check whether or not the string contains the char
@@ -90,6 +103,7 @@ resetCounter:
 printBlanks:
 	beq $s1, 4, found	#once counter reaches 4, go to found
 	lbu $a0, ($a1)		#load char at base address $s1
+	beq $a0, 0, found	#end of string
 	beq $s0, $a0, printIt	#if they match, go to printIt
 	
 	printStr(blanks)
