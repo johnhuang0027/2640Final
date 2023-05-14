@@ -4,6 +4,7 @@
 
 #objectives:
 # - create a game of Hangman (allowed up to 7 attempts)
+# - guillotine, head, torso, L/R arm, L/R leg
 # NOTES:
 # - if possible, make use of the bit map display in order to make the game more lively and fun
 # - as of right now, the words are hardcoded into the program
@@ -41,22 +42,20 @@
 ################	data segment
 .data
 #	words
-.align 2
-words: .word word1, word2, word3, word4,word5  # an array of words
-word1: .asciiz "apple"
-word2: .asciiz "banana"
-word3: .asciiz "cherry"
-word4: .asciiz "durian"
-word5: .asciiz "bomb"
+word1: .asciiz "yes"
+
+#	guessed word
+guessed_word: .space 32	#allocates space for string containing word as it is being guessed for
 
 #	prompts
 welcome: .asciiz "\nWelcome to The Hangman\n\nCan you guess the word?"
 enterLetter: .asciiz "\n\nEnter a letter: "
 newline: .asciiz "\n"
-blanks: .asciiz " _ "
+sp: .asciiz " "
+blanks: .asciiz " _"
 yes: .asciiz " was found."
 no: .asciiz " was not found."
-tryAgain: .asciiz "\nTry again? (1 for yes, 2 for no) : "
+tryAgain: .asciiz "\n\nTry again? (y/n): "
 goodbye: .asciiz "\nThanks for playing, goodbye!"
 numAttempts: .asciiz "\nAttempts left: "
 totAttempts: .asciiz "\nYour total attempts remaining were: "
@@ -65,113 +64,159 @@ youWon: .asciiz "\n\nYou won! The hangman is spared.\nThe word was: "
 
 ################	text segment
 .text
+welcome_message:
 	printStr(welcome)
-	li  $t7, 7	#tracks number of attempts
-	add $t6, $t6, $zero	#tracks num of chars found
 	
-	#choose a random word from the array
-	li $t0, 5      #num of words in array
-	li $v0, 42     #instruction for random seed
-	li $a1, 5
-	syscall
+attempt_tracker:
+	li $t7, 7	#tracks number of attempts
 	
-	mul $t1, $v0, 4
-	
-	la $s7, words
-	add $s7, $s7, $t1
-	lw $t0, ($s7)  # load the chosen word from memory
+characters_found:
+	li $t6, 0	#tracks num of chars found
 
+################	main section
+#	Asks user to enter a leter and takes in a character. Think of this section
+#	as the round itself.
+#
+#	$s0 = char that was read
+#	$a1 = address of the word
 main:
 	printStr(enterLetter)
 	readChar
-	move $s0, $v0	#stores char in $s0
-	la   $a1, ($t0)	#load address of word
-	li   $s1, 0	#set counter
+	move $s0, $v0		#stores char in $ s0
+	la   $a1, word1		#load address of word1 to $ a1
 	
-#	loop to check whether or not the string contains the char
-findLetter:
-	beq $s1, 4, notFound		#if counter reaches 4, go to notFound
-	lbu $a0, ($a1)			#load correct char at base address $s1
+length_of_string:
+	li  $t0, 0		#tracks length of string to $ t0
+	printStr(newline)	#prints a new line (for output purposes only)
 	
-	beq $s0, $a0, resetCounter	#if current address matches char, go to found
+loop_counter:
+	li   $t1, 0	#set counter to $ t1
+
+################	count_chars
+#	This loop counts the number of chars in the string.
+#
+#	$a1 = still holds address of the word
+#	$a0 = current char
+#
+#	$t0 = holds the length of the string
+count_chars:
+	lbu $a0, ($a1)		#load current char at base address $ a0
+	beqz $a0, resetCount	#once there's no more chars to read, go to resetCount
+	add $t0, $t0, 1
+	add $a1, $a1, 1
+	j count_chars
+
+################	resetCount
+#	This only reloads the address of the word
+#
+resetCount:
+	la $a1, word1
+
+################	findLetter
+#	This loop checks whether or not the string contains the char
+#	$t1 = loop counter starting from 0
+#	$t0 = string length
+#	$s0 = contains char that user entered
+findLetter:	
+	beq $t1, $t0, decide_if_found		#if $ t1 equals $ t0, go to decide
+	lbu $a0, ($a1)				#load char at base address to $ a0
+	beq $s0, $a0, printIt			#if the guessed char at $s0 matches with the current char $a0, go to printIt
 	
-	add $s1, $s1, 1			#increment counter
-	add $a1, $a1, 1			#increment address
+	printStr(blanks)		#if not, default is to print a blank space " _ "
 	
+	add $t1, $t1, 1			#increment loop counter
+	add $a1, $a1, 1			#increment base address
 	j findLetter
-	
-resetCounter:
-	move $s1, $zero
-	la   $a1, words
-	
-	printStr(newline)
-	
-#	loop to print blank spaces, as well as the chars found within the string
-printBlanks:
-	beq $s1, 4, found	#once counter reaches 4, go to found
-	lbu $a0, ($a1)		#load char at base address $s1
-	beq $a0, 0, found	#end of string
-	beq $s0, $a0, printIt	#if they match, go to printIt
-	
-	printStr(blanks)
-	add $s1, $s1, 1		#increment counter
-	add $a1, $a1, 1		#increment address
-	
-	j printBlanks
-	
+
+################	printIt
+#	Just prints the char out
+#	sp = string containing blank space " "
 printIt:
-	printChar($s0)
-	add $t6, $t6, 1		#increment num of chars found
-	add $s1, $s1, 1		#increment counter
-	add $a1, $a1, 1		#increment address
-	j printBlanks
+	printStr(sp)		# prints a blank space
 	
+	printChar($s0)		# prints the char
+	
+	add $t6, $t6, 1		#increment $t6 = num of chars found
+	add $t1, $t1, 1		#increment loop counter
+	add $a1, $a1, 1		#increment base address
+	
+	j findLetter		#returns to the loop to find more chars to print
+
+################	decide_if_found
+#	This checks the num of chars found ( $t6) to determine whether or not to print out all blank spaces
+#
+#	or spaces along with the chars that were found
+decide_if_found:
+	bgtz $t6, found		#if the number of chars found is greater than 0, go to found
+
+	j notFound	#default is go to notFound
+
+################	found
+#	This prints messages when the char entered was found in the string
+#	$t6 = num of chars found
+#	$t0 = length of the string
+#	$s0 = char entered by user
+#
+#	registers used same as in notFound
 found:
-	beq $t6, 4, winner	#once all chars in the string are found, you win
+	beq $t6, $t0, winner	#once the number of chars found = string length, go to winner
 	printStr(newline)
 	printChar($s0)
-	printStr(yes)
+	printStr(yes)		#prints " was found "
 	
-	printStr(numAttempts)	#print out number of attempts left
-	printInt($t7)
-	j main
+	printStr(numAttempts)	#print "\nAttempts left: "
+	printInt($t7)		#prints out $t7 = number of attempts left
 	
+	j main			#returns to main to enter the next char
+
+################	found
+#	This prints messages when the char entered was not found
 notFound:
+	beq $t7, $zero, loser	#once num of attempts reachez 0, go to loser
 	printStr(newline)
 	printChar($s0)
-	printStr(no)
+	printStr(no)		#prints " was not found "
 	
 	printStr(numAttempts)
-	sub $t7, $t7, 1
+	sub $t7, $t7, 1		#decrements the number of attempts left in $t7
 	printInt($t7)
-	beq $t7, $zero, loser	#once num of tries reachez 0, you lose
+	
 	j main
 
+################	winner
+#	This prints messages when you entered all the letters in the string
 winner:
 	printStr(youWon)
-	li $v0, 4
-	la $a0, ($a1)
-	syscall
-	printStr(totAttempts)
+	printStr(word1)
+	printStr(totAttempts)	#prints "\nYour total attempts remaining were: "
 	printInt($t7)
-	j retry
 	
+	j retry			#jump to retry
+	
+################	loser
+#	This prints messages when you've lost all your attempts
 loser:
 	printStr(youLost)
-	li $v0, 4
-	la $a0, ($a1)
-	syscall
-	printStr(totAttempts)
+	printStr(word1)
+	printStr(totAttempts)	#prints "\nYour total attempts remaining were: "
 	printInt($t7)
-	j retry
 	
+	j retry			#jump to retry
+	
+################	retry
+#	This asks user after you either win or lose the round, to play again.
+#	Also, this functions as a sort of loop, if an invalid response is given
 retry:
-	li   $t7, 7	#reset num of attempts
-	li   $t6, 0	#resent num of chars found
+	li  $t7, 7	#reset num of attempts to 7
+	li  $t6, 0	#reset num of chars found to 0
+	
 	printStr(tryAgain)
-	readInt
-	beq  $v0, 1, main
-	beq  $v0, 2, exit
+	readChar
+	
+	beq $v0, 121, main	#if the answer is 'y', go back to main
+	bne $v0, 110, retry	#if the answer is neither 'y' nor 'n', loop the retry until 'y' or 'n' is entered
+	
+	j exit		#default, if 'n' is entered, jump to exit
 	
 exit:
 	printStr(goodbye)
