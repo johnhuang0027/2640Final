@@ -42,7 +42,13 @@
 ################	data segment
 .data
 #	words
-word1: .asciiz "yes"
+.align 2
+words: .word word1, word2, word3, word4,word5  # an array of words
+word1: .asciiz "apple"
+word2: .asciiz "banana"
+word3: .asciiz "bomb"
+word4: .asciiz "computer"
+word5: .asciiz "yes"
 
 #	guessed word
 guessed_word: .space 32	#allocates space for string containing word as it is being guessed for
@@ -72,6 +78,17 @@ attempt_tracker:
 	
 characters_found:
 	li $t6, 0	#tracks num of chars found
+random_word:
+	#random word
+	li $v0, 42     #instruction for random seed
+	li $a1, 5
+	syscall
+	
+	mul $t1, $a0, 4
+	
+	la $s7, words
+	add $s7, $s7, $t1
+	lw $t8, ($s7)  # load the chosen word from memory
 
 ################	main section
 #	Asks user to enter a leter and takes in a character. Think of this section
@@ -83,7 +100,7 @@ main:
 	printStr(enterLetter)
 	readChar
 	move $s0, $v0		#stores char in $ s0
-	la   $a1, word1		#load address of word1 to $ a1
+	la   $a1, ($t8)		#load address of word to $ a1
 	
 length_of_string:
 	li  $t0, 0		#tracks length of string to $ t0
@@ -110,7 +127,7 @@ count_chars:
 #	This only reloads the address of the word
 #
 resetCount:
-	la $a1, word1
+	la $a1, ($t8)
 
 ################	findLetter
 #	This loop checks whether or not the string contains the char
