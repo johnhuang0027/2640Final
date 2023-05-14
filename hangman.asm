@@ -91,7 +91,7 @@ main:
 #	loop to check whether or not the string contains the char
 findLetter:
 	beq $s1, 4, notFound		#if counter reaches 4, go to notFound
-	lbu $a0, ($a1)			#load char at base address $s1
+	lbu $a0, ($a1)			#load correct char at base address $s1
 	
 	beq $s0, $a0, resetCounter	#if current address matches char, go to found
 	
@@ -102,7 +102,8 @@ findLetter:
 	
 resetCounter:
 	move $s1, $zero
-	la   $a1, word1
+	la   $a1, words
+	
 	printStr(newline)
 	
 #	loop to print blank spaces, as well as the chars found within the string
@@ -148,14 +149,18 @@ notFound:
 
 winner:
 	printStr(youWon)
-	printStr(word1)
+	li $v0, 4
+	la $a0, ($a1)
+	syscall
 	printStr(totAttempts)
 	printInt($t7)
 	j retry
 	
 loser:
 	printStr(youLost)
-	printStr(word1)
+	li $v0, 4
+	la $a0, ($a1)
+	syscall
 	printStr(totAttempts)
 	printInt($t7)
 	j retry
