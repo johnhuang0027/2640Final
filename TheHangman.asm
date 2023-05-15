@@ -1,3 +1,5 @@
+#Names: John Huang, Jomar Veloso, Joshua Gomez
+#Date: 5/2
 #
 #				T H E	H A N G M A N
 #objectives:
